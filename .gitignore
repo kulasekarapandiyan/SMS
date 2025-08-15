@@ -1,0 +1,35 @@
+# Ignore compiled output files
+*.o
+*.exe
+*.dll
+
+# Ignore temporary files
+*.tmp
+*.log
+*~
+
+# Ignore build artifacts
+build/
+dist/
+target/
+
+# Ignore IDE-specific files
+.idea/
+.vscode/
+*.iml
+
+# Ignore dependency directories
+node_modules/
+vendor/
+backend/venv
+frontend/node_modules
+
+# Ignore sensitive information (e.g., environment variables)
+.env
+
+# Ignore specific files by name
+my_secret_file.txt
+
+# Ignore all files with a .txt extension except one
+*.txt
+!important.txt
