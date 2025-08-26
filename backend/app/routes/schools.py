@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import School, User
@@ -14,8 +14,14 @@ def get_schools():
     current_user = User.query.get(current_user_id)
     
     if current_user.is_super_admin():
-        # Super admin can see all schools
-        schools = School.query.all()
+        # Super admin can see all schools; use read replica when available
+        read_session = None
+        if current_app.read_session_factory:
+            read_session = current_app.read_session_factory()
+            schools = read_session.query(School).all()
+            read_session.close()
+        else:
+            schools = School.query.all()
         return jsonify({
             'success': True,
             'schools': [school.to_dict() for school in schools]
@@ -42,7 +48,15 @@ def get_school(school_id):
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
     
-    school = School.query.get_or_404(school_id)
+    # Prefer read replica
+    if current_app.read_session_factory:
+        rs = current_app.read_session_factory()
+        school = rs.query(School).get(school_id)
+        rs.close()
+        if not school:
+            return jsonify({'success': False, 'message': 'School not found'}), 404
+    else:
+        school = School.query.get_or_404(school_id)
     
     return jsonify({
         'success': True,

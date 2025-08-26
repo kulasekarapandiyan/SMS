@@ -5,6 +5,9 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 from config import Config
+import redis
+import sqlalchemy as sa
+from sqlalchemy.orm import sessionmaker
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -23,6 +26,26 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     bcrypt.init_app(app)
     CORS(app)
+
+    # Simple Redis cache client (optional; can be None if REDIS_URL not set)
+    app.cache = None
+    try:
+        if getattr(config_class, 'REDIS_URL', None) or app.config.get('REDIS_URL'):
+            app.cache = redis.Redis.from_url(app.config.get('REDIS_URL', getattr(config_class, 'REDIS_URL', 'redis://localhost:6379/0')))
+    except Exception:
+        app.cache = None
+
+    # Optional read-replica engine/session factory for read-only operations
+    app.read_engine = None
+    app.read_session_factory = None
+    read_url = app.config.get('DATABASE_READ_URL') or getattr(config_class, 'DATABASE_READ_URL', '')
+    if read_url:
+        try:
+            app.read_engine = sa.create_engine(read_url, pool_pre_ping=True, future=True)
+            app.read_session_factory = sessionmaker(bind=app.read_engine, autoflush=False, autocommit=False, future=True)
+        except Exception:
+            app.read_engine = None
+            app.read_session_factory = None
 
     # Register blueprints (auth required, others optional)
     from app.routes.auth import auth_bp

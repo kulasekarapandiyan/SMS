@@ -5,14 +5,18 @@ class Config:
     """Base configuration class"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     
-    # Database configuration
+    # Database configuration (primary write DB)
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///school_management.db'
+    # Optional read-replica URL for read operations
+    DATABASE_READ_URL = os.environ.get('DATABASE_READ_URL', '')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT configuration
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-key'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    # Cache configuration
+    REDIS_URL = os.environ.get('REDIS_URL', '')
     
     # File upload configuration
     UPLOAD_FOLDER = 'uploads'

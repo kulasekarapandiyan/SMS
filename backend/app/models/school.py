@@ -1,5 +1,6 @@
 from datetime import datetime
 from app import db
+from sqlalchemy import Index
 
 class School(db.Model):
     """School model for multi-tenant support"""
@@ -43,6 +44,10 @@ class School(db.Model):
     users = db.relationship('User', back_populates='school', lazy='dynamic')
     classes = db.relationship('Class', back_populates='school', lazy='dynamic')
     subjects = db.relationship('Subject', back_populates='school', lazy='dynamic')
+
+    __table_args__ = (
+        Index('ix_schools_code', 'code'),
+    )
     
     def __init__(self, **kwargs):
         super(School, self).__init__(**kwargs)

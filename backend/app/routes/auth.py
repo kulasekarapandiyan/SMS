@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from app import db, bcrypt
 from app.models import User, Student, Teacher
+from app.models.user import UserRole
 from datetime import datetime
 import re
 
@@ -52,6 +53,18 @@ def register():
         if User.query.filter_by(username=data['email']).first():
             return jsonify({'error': 'Username already taken'}), 409
         
+        # Normalize role to enum (accepts 'student' or 'STUDENT')
+        role_value = data['role']
+        if isinstance(role_value, str):
+            try:
+                role_enum = UserRole[role_value.upper()]
+            except KeyError:
+                return jsonify({'error': f"Invalid role '{role_value}'"}), 400
+        elif isinstance(role_value, UserRole):
+            role_enum = role_value
+        else:
+            return jsonify({'error': 'Invalid role type'}), 400
+
         # Create user
         user_data = {
             'email': data['email'],
@@ -59,19 +72,27 @@ def register():
             'password': data['password'],
             'first_name': data['first_name'],
             'last_name': data['last_name'],
-            'role': data['role'],
+            'role': role_enum,
             'phone': data.get('phone'),
             'address': data.get('address'),
             'date_of_birth': datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date() if data.get('date_of_birth') else None,
             'gender': data.get('gender')
         }
+
+        # Optional multi-tenant context
+        school_id = data.get('school_id')
+        if school_id is not None:
+            user_data['school_id'] = school_id
         
         user = User(**user_data)
         db.session.add(user)
         db.session.commit()
         
         # Create role-specific profile
-        if data['role'] == 'student':
+        if role_enum == UserRole.STUDENT:
+            # Ensure we have tenant context for student profile
+            if school_id is None:
+                return jsonify({'error': 'school_id is required for student registration'}), 400
             student_data = {
                 'user_id': user.id,
                 'admission_date': datetime.now().date(),
@@ -82,7 +103,8 @@ def register():
                 'blood_group': data.get('blood_group'),
                 'medical_conditions': data.get('medical_conditions'),
                 'previous_school': data.get('previous_school'),
-                'academic_year': str(datetime.now().year)
+                'academic_year': str(datetime.now().year),
+                'school_id': school_id
             }
             student = Student(**student_data)
             db.session.add(student)

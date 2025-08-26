@@ -1,4 +1,5 @@
 from app import db
+from sqlalchemy import Index
 from datetime import datetime
 
 class Student(db.Model):
@@ -21,7 +22,7 @@ class Student(db.Model):
     status = db.Column(db.String(20), default='active')  # active, inactive, graduated, transferred
     
     # School relationship (multi-tenant)
-    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False, index=True)
     school = db.relationship('School', backref='students')
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -116,4 +117,6 @@ class Student(db.Model):
     
     def __repr__(self):
         return f'<Student {self.student_id}>'
+
+Index('ix_students_school_class', Student.school_id, Student.current_class_id, Student.id)
 
